@@ -1,13 +1,11 @@
 #https://stackoverflow.com/questions/76081863/docker-image-with-cuda-and-ros2-on-ubuntu-22-04
 
 ARG UBUNTU_VERSION=20.04
-ARG CUDA_VERSION=11.8.0
-ARG CUDA=11.8
-ARG CUDNN_VERSION=8
+ARG CUDA_VERSION=12.8.1
 
-FROM nvidia/cuda:${CUDA_VERSION}-cudnn${CUDNN_VERSION}-devel-ubuntu${UBUNTU_VERSION}
+FROM nvidia/cuda:${CUDA_VERSION}-cudnn-devel-ubuntu${UBUNTU_VERSION}
 
-ARG PYTHON_VERSION=3.9
+ARG PYTHON_VERSION=3.10
 
 
 # Let us install tzdata painlessly
@@ -31,7 +29,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     vainfo \
     mesa-va-drivers \
     mesa-utils \
-    # for pyenv
     lzma \
     liblzma-dev \
     libssl-dev \
@@ -82,9 +79,6 @@ RUN echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config && \
 USER $USER_NAME
 SHELL ["/bin/bash", "-c"]
 WORKDIR "/home/${USER_NAME}"
-ENV PYENV_ROOT="/home/${USER_NAME}/.pyenv"
 
 RUN sudo apt-get update -y
-ENV PATH="${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash \
-    && pyenv install 3.9 && pyenv global 3.9 && pyenv rehash && pip install --upgrade pip && pip install poetry
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
