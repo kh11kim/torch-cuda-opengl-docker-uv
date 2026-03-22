@@ -1,4 +1,4 @@
-## jax-cuda-opengl Docker example
+## torch-cuda-opengl-uv-mujoco Docker example
 
 This repository contains the necessary files to build and run a Docker container for JAX. The container is equipped with CUDA and OpenGL support.
 
