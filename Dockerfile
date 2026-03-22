@@ -1,4 +1,4 @@
-#https://stackoverflow.com/questions/76081863/docker-image-with-cuda-and-ros2-on-ubuntu-22-04
+# https://stackoverflow.com/questions/76081863/docker-image-with-cuda-and-ros2-on-ubuntu-22-04
 
 ARG UBUNTU_VERSION=20.04
 ARG CUDA_VERSION=12.8.1
@@ -6,79 +6,75 @@ ARG CUDA_VERSION=12.8.1
 FROM nvidia/cuda:${CUDA_VERSION}-cudnn-devel-ubuntu${UBUNTU_VERSION}
 
 ARG PYTHON_VERSION=3.10
+ARG UID=
+ARG USER_NAME=
 
-
-# Let us install tzdata painlessly
 ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
 
-# Needed for string substitution
 SHELL ["/bin/bash", "-c"]
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     ca-certificates \
     ccache \
     cmake \
     curl \
     git \
+    libbz2-dev \
+    libegl1 \
+    libffi-dev \
+    libgdbm-dev \
+    libgl1 \
+    libglew-dev \
+    libglvnd0 \
+    libgles2 \
+    liblzma-dev \
+    libncurses5-dev \
+    libncursesw5-dev \
+    libnss3-dev \
+    libosmesa6-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    libssl-dev \
+    lzma \
+    mesa-utils \
     pkg-config \
+    python3-tk \
     software-properties-common \
     ssh \
     sudo \
     unzip \
-    vim \
-    wget \ 
     vainfo \
-    mesa-va-drivers \
-    mesa-utils \
-    lzma \
-    liblzma-dev \
-    libssl-dev \
-    build-essential \
-    libbz2-dev \ 
-    libffi-dev \ 
-    libgdbm-dev \
-    libncurses5-dev \ 
-    libncursesw5-dev \
-    libnss3-dev \ 
-    libreadline-dev \ 
-    libsqlite3-dev \ 
-    xz-utils \ 
-    zlib1g-dev \
-    python3-tk
-RUN add-apt-repository ppa:oibaf/graphics-drivers -y
-RUN rm -rf /var/lib/apt/lists/*
+    vim \
+    wget \
+    xz-utils \
+    zlib1g-dev && \
+    rm -rf /var/lib/apt/lists/*
 
-# opengl
-ENV LIBVA_DRIVER_NAME=d3d12
-ENV LD_LIBRARY_PATH=/usr/lib/wsl/lib
-CMD vainfo --display drm --device /dev/dri/card0
+# Default Docker behavior often falls back to CPU rendering.
+# These settings make EGL/NVIDIA the default path inside the container.
+ENV MUJOCO_GL=egl
+ENV PYOPENGL_PLATFORM=egl
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=all
+ENV __EGL_VENDOR_LIBRARY_DIRS=/usr/share/glvnd/egl_vendor.d
+ENV __GLX_VENDOR_LIBRARY_NAME=nvidia
 
-# nvidia-docker2
-ENV NVIDIA_VISIBLE_DEVICES \
-    ${NVIDIA_VISIBLE_DEVICES:-all}
-ENV NVIDIA_DRIVER_CAPABILITIES \
-    ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
-ENV MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA
+RUN mkdir -p /usr/share/glvnd/egl_vendor.d && \
+    printf '%s\n' \
+    '{"file_format_version":"1.0.0","ICD":{"library_path":"libEGL_nvidia.so.0"}}' \
+    > /usr/share/glvnd/egl_vendor.d/10_nvidia.json
 
+RUN adduser "${USER_NAME}" -u "${UID}" --quiet --gecos "" --disabled-password && \
+    echo "${USER_NAME} ALL=(root) NOPASSWD:ALL" > "/etc/sudoers.d/${USER_NAME}" && \
+    chmod 0440 "/etc/sudoers.d/${USER_NAME}"
 
-# See http://bugs.python.org/issue19846 later
-ENV LANG C.UTF-8
-
-ARG UID=
-ARG USER_NAME=
-# Create a user
-RUN adduser $USER_NAME -u $UID --quiet --gecos "" --disabled-password
-RUN echo "$USER_NAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USER_NAME
-RUN chmod 0440 /etc/sudoers.d/$USER_NAME
-
-# For connecting via ssh
 RUN echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config && \
     echo "PermitEmptyPasswords yes" >> /etc/ssh/sshd_config && \
     echo "UsePAM no" >> /etc/ssh/sshd_config
 
-# Login to user
-USER $USER_NAME
-SHELL ["/bin/bash", "-c"]
-WORKDIR "/home/${USER_NAME}"
+USER ${USER_NAME}
+WORKDIR /home/${USER_NAME}
 
-RUN sudo apt-get update -y
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
